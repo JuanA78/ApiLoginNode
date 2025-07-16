@@ -4,7 +4,7 @@
   "description": "Microservicio de login con Express y MongoDB",
   "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
