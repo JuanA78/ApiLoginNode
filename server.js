@@ -16,14 +16,13 @@ const app = express();
 app.use(express.json());
 
 // Habilitar CORS para todos los orígenes
-app.use(cors()); // 👈 Esto permite acceso desde cualquier dominio
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
-// También podrías personalizar CORS así si lo prefieres:
-// app.use(cors({
-//   origin: '*', // cualquier origen
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
 
 // Rutas de autenticación
 app.use('/api/auth', authRoutes);
