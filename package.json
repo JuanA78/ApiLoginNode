@@ -2,7 +2,7 @@
   "name": "api_login",
   "version": "1.0.0",
   "description": "Microservicio de login con Express y MongoDB",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node index.js"
   },
