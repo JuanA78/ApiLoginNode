@@ -1,71 +1,67 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { generateAccessToken, generateRefreshToken, verifyToken } = require('../utils/jwt');
 
 exports.register = async (req, res) => {
+  const { username, password, question, answer } = req.body;
   try {
-    const { username, password, securityQuestion, securityAnswer } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({
-      username,
-      password: hashedPassword,
-      securityQuestion,
-      securityAnswer
-    });
+    const user = new User({ username, password, question, answer });
     await user.save();
-    res.status(201).json({ message: 'Usuario registrado' });
+    res.json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: 'Error al registrar usuario' });
   }
 };
 
 exports.login = async (req, res) => {
+  const { username, password } = req.body;
   try {
-    const { username, password } = req.body;
     const user = await User.findOne({ username });
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!user || !(await user.comparePassword(password))) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    const token = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+    res.json({ token, refreshToken });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error en login' });
   }
 };
 
-exports.forgotPassword = async (req, res) => {
+exports.getQuestion = async (req, res) => {
+  const { username } = req.body;
   try {
-    const { username, securityAnswer, newPassword } = req.body;
- console.log('ForgotPassword request:', { username, securityAnswer, newPassword });
-    // Busca al usuario por username primero
     const user = await User.findOne({ username });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ question: user.question });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al buscar la pregunta' });
+  }
+};
 
-    // Verifica la respuesta de seguridad
-    if (user.securityAnswer !== securityAnswer)
-      return res.status(400).json({ error: 'Respuesta incorrecta' });
-
-    // Actualiza la contraseña con hash
-    user.password = await bcrypt.hash(newPassword, 10);
+exports.resetPassword = async (req, res) => {
+  const { username, answer, newPassword } = req.body;
+  try {
+    const user = await User.findOne({ username });
+    if (!user || !(await user.compareAnswer(answer))) {
+      return res.status(401).json({ error: 'Respuesta incorrecta' });
+    }
+    user.password = newPassword;
     await user.save();
-
-    res.json({ message: 'Contraseña actualizada' });
+    res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error al actualizar contraseña' });
   }
 };
-// ✅ NUEVA: Obtener la pregunta de seguridad
-exports.getSecurityQuestion = async (req, res) => {
+
+exports.refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
   try {
-    const { username } = req.params;
-
-    const user = await User.findOne({ username });
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-    res.json({ securityQuestion: user.securityQuestion });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const decoded = verifyToken(refreshToken, process.env.REFRESH_SECRET);
+    const newToken = generateAccessToken(decoded.userId);
+    res.json({ token: newToken });
+  } catch {
+    res.status(401).json({ error: 'Refresh token inválido' });
   }
 };

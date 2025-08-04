@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const cors = require('cors');
+const authMiddleware = require('./middlewares/authMiddleware');
 
 // Cargar variables de entorno
 dotenv.config();
@@ -23,6 +24,9 @@ app.use(cors({
   credentials: true
 }));
 
+app.get('/api/protected', authMiddleware, (req, res) => {
+  res.json({ message: `Hola usuario ${req.userId}, tu token es válido.` });
+});
 
 // Rutas de autenticación
 app.use('/api/auth', authRoutes);
